@@ -1,7 +1,208 @@
-use ABD_aula;
-go
+-- create db if not exists
+IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = N'ADB_aula')
+  CREATE DATABASE ADB_aula;
+GO
+USE ADB_aula;
+GO
+
+use ADB_aula;
+go 
 set language BRAZILIAN;
 
+-- Create tables
+USE ADB_aula;
+GO
+
+SET LANGUAGE N'Brazilian';
+GO
+
+-- concessionaria
+IF NOT EXISTS (
+    SELECT 1
+      FROM sys.tables t
+      JOIN sys.schemas s ON t.schema_id = s.schema_id
+     WHERE s.name = N'dbo'
+       AND t.name = N'concessionaria'
+)
+BEGIN
+    CREATE TABLE dbo.concessionaria (
+        con_id       INT           PRIMARY KEY,
+        con_nome     VARCHAR(100)  NOT NULL,
+        con_tipo     VARCHAR(50)   NOT NULL,
+        con_cnpj     VARCHAR(14)   NOT NULL,
+        con_telefone VARCHAR(15)   NOT NULL,
+        con_endereco VARCHAR(100)  NOT NULL,
+        con_numero   INT           NULL,
+        con_bairro   VARCHAR(50)   NULL,
+        con_cep      INT           NULL
+    );
+END
+GO
+
+-- montadora
+IF NOT EXISTS (
+    SELECT 1
+      FROM sys.tables t
+      JOIN sys.schemas s ON t.schema_id = s.schema_id
+     WHERE s.name = N'dbo'
+       AND t.name = N'montadora'
+)
+BEGIN
+    CREATE TABLE dbo.montadora (
+        mont_id   INT          PRIMARY KEY,
+        mont_nome VARCHAR(100) NOT NULL
+    );
+END
+GO
+
+-- modelo
+IF NOT EXISTS (
+    SELECT 1
+      FROM sys.tables t
+      JOIN sys.schemas s ON t.schema_id = s.schema_id
+     WHERE s.name = N'dbo'
+       AND t.name = N'modelo'
+)
+BEGIN
+    CREATE TABLE dbo.modelo (
+        mod_id   INT          PRIMARY KEY,
+        mod_nome VARCHAR(100) NOT NULL,
+        mont_id  INT          NOT NULL
+    );
+    ALTER TABLE dbo.modelo
+      ADD CONSTRAINT FK_modelo_montadora
+      FOREIGN KEY (mont_id) REFERENCES dbo.montadora(mont_id);
+END
+GO
+
+-- veiculo
+IF NOT EXISTS (
+    SELECT 1
+      FROM sys.tables t
+      JOIN sys.schemas s ON t.schema_id = s.schema_id
+     WHERE s.name = N'dbo'
+       AND t.name = N'veiculo'
+)
+BEGIN
+    CREATE TABLE dbo.veiculo (
+        vei_id            INT           PRIMARY KEY,
+        vei_chassi        VARCHAR(17)   NOT NULL,
+        vei_placa         VARCHAR(8)    NOT NULL,
+        vei_valor         DECIMAL(14,2) NOT NULL,
+        vei_ano_fabricacao INT          NOT NULL,
+        vei_ano_modelo    INT           NOT NULL,
+        vei_km            INT           NOT NULL,
+        vei_tipo          INT           NOT NULL,  -- 1: Novo, 2: Semi‑novo, 3: Usado
+        vei_combustivel   CHAR(1)       NOT NULL,  -- G, A, D, E, H
+        mod_id            INT           NOT NULL,
+        con_id            INT           NOT NULL,
+        vei_status        INT           NOT NULL   -- 1: Disponível, 2: Vendido, 3: Reservado
+    );
+    ALTER TABLE dbo.veiculo
+      ADD CONSTRAINT FK_veiculo_modelo
+        FOREIGN KEY (mod_id) REFERENCES dbo.modelo(mod_id),
+          CONSTRAINT FK_veiculo_concessionaria
+        FOREIGN KEY (con_id) REFERENCES dbo.concessionaria(con_id);
+END
+GO
+
+-- cliente
+IF NOT EXISTS (
+    SELECT 1
+      FROM sys.tables t
+      JOIN sys.schemas s ON t.schema_id = s.schema_id
+     WHERE s.name = N'dbo'
+       AND t.name = N'cliente'
+)
+BEGIN
+    CREATE TABLE dbo.cliente (
+        cli_id       INT          PRIMARY KEY,
+        cli_nome     VARCHAR(100) NOT NULL,
+        cli_cpf      VARCHAR(11)  NOT NULL,
+        cli_telefone VARCHAR(15)  NOT NULL,
+        cli_endereco VARCHAR(100) NOT NULL,
+        cli_numero   INT          NULL,
+        cli_bairro   VARCHAR(50)  NULL,
+        cli_cep      INT          NULL
+    );
+END
+GO
+
+-- funcionario
+IF NOT EXISTS (
+    SELECT 1
+      FROM sys.tables t
+      JOIN sys.schemas s ON t.schema_id = s.schema_id
+     WHERE s.name = N'dbo'
+       AND t.name = N'funcionario'
+)
+BEGIN
+    CREATE TABLE dbo.funcionario (
+        fun_id       INT          PRIMARY KEY,
+        fun_nome     VARCHAR(100) NOT NULL,
+        fun_cpf      VARCHAR(11)  NOT NULL,
+        fun_telefone VARCHAR(15)  NOT NULL,
+        fun_endereco VARCHAR(100) NOT NULL,
+        fun_numero   INT          NULL,
+        fun_bairro   VARCHAR(50)  NULL,
+        fun_cep      INT          NULL
+    );
+END
+GO
+
+-- venda
+IF NOT EXISTS (
+    SELECT 1
+      FROM sys.tables t
+      JOIN sys.schemas s ON t.schema_id = s.schema_id
+     WHERE s.name = N'dbo'
+       AND t.name = N'venda'
+)
+BEGIN
+    CREATE TABLE dbo.venda (
+        ven_id   INT          PRIMARY KEY,
+        cli_id   INT          NOT NULL,
+        fun_id   INT          NOT NULL,
+        ven_data DATE         NOT NULL,
+        con_id   INT          NOT NULL
+    );
+    ALTER TABLE dbo.venda
+      ADD CONSTRAINT FK_venda_cliente
+        FOREIGN KEY (cli_id) REFERENCES dbo.cliente(cli_id),
+          CONSTRAINT FK_venda_funcionario
+        FOREIGN KEY (fun_id) REFERENCES dbo.funcionario(fun_id),
+          CONSTRAINT FK_venda_concessionaria
+        FOREIGN KEY (con_id) REFERENCES dbo.concessionaria(con_id);
+END
+GO
+
+-- vendaVeiculo
+IF NOT EXISTS (
+    SELECT 1
+      FROM sys.tables t
+      JOIN sys.schemas s ON t.schema_id = s.schema_id
+     WHERE s.name = N'dbo'
+       AND t.name = N'vendaVeiculo'
+)
+BEGIN
+    CREATE TABLE dbo.vendaVeiculo (
+        ven_id         INT           NOT NULL,
+        vei_id         INT           NOT NULL,
+        ven_quantidade INT           NOT NULL,
+        ven_valor      DECIMAL(14,2) NOT NULL,
+        ven_desconto   DECIMAL(14,2) NULL,
+        CONSTRAINT PK_vendaVeiculo PRIMARY KEY (ven_id, vei_id)
+    );
+    ALTER TABLE dbo.vendaVeiculo
+      ADD CONSTRAINT FK_vv_venda
+        FOREIGN KEY (ven_id) REFERENCES dbo.venda(ven_id),
+          CONSTRAINT FK_vv_veiculo
+        FOREIGN KEY (vei_id) REFERENCES dbo.veiculo(vei_id);
+END
+GO
+
+
+-- Insert data
 insert into concessionaria values (5, 'Carros importados cia LTDA', 'Imports car', '123456654', '419868745', 'Avenida Mario Tourinho, 10542', null, 'Barigui', 2878)
 insert into montadora values (25, 'GWM');
 insert into montadora values (26, 'BYD');
